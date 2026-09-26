@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>inpaint sandbox</title>
+    <!-- A classic script, not bundled: the bundler's CommonJS interop breaks awaiting cv. -->
+    <script src="/vendor/opencv.js"></script>
+  </head>
+  <body>
+    <!-- Never shown: a sandboxed context where OpenCV.js may use eval. -->
+    <script type="module" src="./inpaint.ts"></script>
+  </body>
+</html>

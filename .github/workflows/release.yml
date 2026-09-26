@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+
+      # The manifest version comes from package.json, so the tag must match it.
+      - name: Check the tag matches the extension version
+        working-directory: extension
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${version}"
+            exit 1
+          fi
+
+      - name: Cache model weights
+        uses: actions/cache@v4
+        with:
+          path: extension/public/models
+          key: models-${{ hashFiles('extension/scripts/prepare-assets.mjs') }}
+
+      - name: Build
+        working-directory: extension
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+
+      - name: Package
+        run: |
+          cd extension/dist
+          zip -r -q "${GITHUB_WORKSPACE}/comic-translator-${GITHUB_REF_NAME}.zip" .
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" "comic-translator-${GITHUB_REF_NAME}.zip" \
+            --title "Comic Translator ${GITHUB_REF_NAME}" \
+            --generate-notes

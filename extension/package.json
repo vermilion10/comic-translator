@@ -1,0 +1,33 @@
+{
+  "name": "comic-translator-extension",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Translates comics, manga, manhua and manhwa in place on the page.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "assets": "node scripts/prepare-assets.mjs",
+    "prebuild": "npm run assets",
+    "predev": "npm run assets"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.7.1",
+    "@eslint/js": "^10.0.1",
+    "@types/chrome": "^0.2.7",
+    "@webgpu/types": "^0.1.72",
+    "eslint": "^10.9.1",
+    "globals": "^16.0.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.68.0",
+    "vite": "^8.2.2"
+  },
+  "dependencies": {
+    "@mlc-ai/web-llm": "^0.2.84",
+    "@techstark/opencv-js": "^5.0.0-release.1",
+    "onnxruntime-web": "^1.29.0"
+  }
+}

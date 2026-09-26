@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Comic Translator — pipeline harness</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        font: 14px/1.5 system-ui, sans-serif;
+        margin: 0;
+        padding: 24px;
+        max-width: 1100px;
+      }
+      h1 { font-size: 18px; margin: 0 0 4px; }
+      p.lede { margin: 0 0 20px; opacity: 0.7; }
+      #drop {
+        border: 2px dashed currentColor;
+        border-radius: 10px;
+        padding: 32px;
+        text-align: center;
+        opacity: 0.55;
+        cursor: pointer;
+      }
+      #drop.over { opacity: 1; background: rgb(128 128 128 / 0.12); }
+      #controls { display: flex; align-items: center; gap: 12px; margin: 20px 0 8px; }
+      #controls[hidden] { display: none; }
+      #status { margin: 12px 0; min-height: 1.5em; font-variant-numeric: tabular-nums; }
+      canvas { max-width: 100%; height: auto; border-radius: 6px; }
+      #views { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+      #views figure { margin: 0; min-width: 0; }
+      #views figcaption { opacity: 0.7; margin-bottom: 6px; }
+      #cleaned-view[hidden], #rendered-view[hidden], #plated-view[hidden] { display: none; }
+
+      #readings { border-collapse: collapse; margin: 20px 0 0; width: 100%; }
+      #readings[hidden] { display: none; }
+      #readings th, #readings td {
+        text-align: left;
+        padding: 6px 10px;
+        border-bottom: 1px solid rgb(128 128 128 / 0.25);
+        vertical-align: top;
+      }
+      #readings th { font-weight: 600; opacity: 0.7; }
+      #readings td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+      #readings td.text {
+        font-size: 16px;
+        /* The source is CJK; let the platform pick a font that has the glyphs. */
+        font-family: "Yu Gothic", "Hiragino Sans", "Noto Sans JP", sans-serif;
+      }
+      #readings tr.low { opacity: 0.45; }
+      #readings td.plated { font-weight: 600; }
+
+      #bench { border-top: 1px solid rgb(128 128 128 / 0.3); margin-top: 32px; padding-top: 20px; }
+      #bench h2 { font-size: 15px; margin: 0 0 4px; }
+      #bench p { margin: 0 0 12px; opacity: 0.7; }
+      #lines {
+        font: 14px/1.5 ui-monospace, monospace; width: 100%; min-height: 130px;
+        padding: 8px; border-radius: 6px; border: 1px solid rgb(128 128 128 / 0.5);
+        background: transparent; color: inherit; box-sizing: border-box;
+      }
+      #bench-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
+      #bench-status { opacity: 0.8; font-variant-numeric: tabular-nums; }
+      #bench-table { border-collapse: collapse; width: 100%; }
+      #bench-table[hidden] { display: none; }
+      #bench-table th, #bench-table td {
+        text-align: left; padding: 6px 10px; vertical-align: top;
+        border-bottom: 1px solid rgb(128 128 128 / 0.25);
+      }
+      #bench-table th { font-weight: 600; opacity: 0.7; }
+      #bench-table td.src {
+        font-family: "Yu Gothic", "Hiragino Sans", "Noto Sans JP", sans-serif; font-size: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Pipeline harness</h1>
+    <p class="lede">
+      Runs detect, then OCR over each detected region, on a single image inside
+      the extension with no page overlay. Drop a comic page below.
+    </p>
+
+    <div id="drop">Drop an image here, paste one, or click to choose a file</div>
+    <input id="file" type="file" accept="image/*" hidden />
+
+    <div id="controls" hidden>
+      <label for="threshold">Confidence</label>
+      <input id="threshold" type="range" min="5" max="95" value="60" />
+      <output id="threshold-value">0.60</output>
+      <label>Source
+        <select id="language">
+          <option value="ja">Japanese</option>
+          <option value="zh">Chinese</option>
+          <option value="ko">Korean</option>
+        </select>
+      </label>
+      <label><input id="ocr" type="checkbox" checked /> Read text (slow)</label>
+      <label><input id="clean" type="checkbox" checked /> Erase text</label>
+      <label title="erase the text shape inside each box instead of the whole box"><input id="shape" type="checkbox" checked /> Erase by shape</label>
+      <label title="clip each region to its balloon and fill it with the balloon's colour; regions without a flat balloon still go to Telea"><input id="balloon" type="checkbox" checked /> Fill balloons</label>
+      <label title="leave text drawn on art unerased and put the English in a small label beside it"><input id="label-art" type="checkbox" checked /> Label text on art</label>
+      <label><input id="translate" type="checkbox" /> Translate</label>
+      <label>Translator
+        <select id="provider"></select>
+      </label>
+      <label>Into
+        <select id="target"></select>
+      </label>
+      <button id="open-options" type="button" title="The cloud API key is set there">Options…</button>
+    </div>
+
+    <div id="status"></div>
+    <div id="views">
+      <figure>
+        <figcaption>Detected</figcaption>
+        <canvas id="canvas"></canvas>
+      </figure>
+      <figure id="cleaned-view" hidden>
+        <figcaption>Erased</figcaption>
+        <canvas id="cleaned"></canvas>
+      </figure>
+      <figure id="rendered-view" hidden>
+        <figcaption>Typeset</figcaption>
+        <canvas id="rendered"></canvas>
+      </figure>
+      <figure id="plated-view" hidden>
+        <figcaption>Typeset + caption plates</figcaption>
+        <canvas id="plated"></canvas>
+      </figure>
+    </div>
+
+    <table id="readings" hidden>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Detect</th>
+          <th>Read</th>
+          <th>Text</th>
+          <th>Tone</th>
+          <th>English</th>
+        </tr>
+      </thead>
+      <tbody id="readings-body"></tbody>
+    </table>
+
+    <section id="bench">
+      <h2>Translate lines</h2>
+      <p>
+        Runs the translate stage on its own, over lines pasted below rather than
+        over a page, using whichever provider the options page is set to. This is
+        how the two providers get compared on the same input: the eval sets'
+        own OCR output goes in, and both answers come out of the same prompt.
+        One line per bubble.
+      </p>
+      <textarea id="lines" spellcheck="false"
+        placeholder="素直にあやまるしか&#10;ぎゃっ&#10;ピンポーーン"></textarea>
+      <div id="bench-row">
+        <button id="bench-run" type="button">Translate lines</button>
+        <span id="bench-status"></span>
+      </div>
+      <table id="bench-table" hidden>
+        <thead>
+          <tr><th>#</th><th>Source</th><th>English</th></tr>
+        </thead>
+        <tbody id="bench-body"></tbody>
+      </table>
+    </section>
+
+    <script type="module" src="./harness.ts"></script>
+  </body>
+</html>

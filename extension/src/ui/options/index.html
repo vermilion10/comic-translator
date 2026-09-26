@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Comic Translator — settings</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        font: 14px/1.55 system-ui, sans-serif;
+        margin: 0 auto;
+        padding: 32px 24px 64px;
+        max-width: 640px;
+      }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      p.lede { margin: 0 0 28px; opacity: 0.7; }
+      section { border-top: 1px solid rgb(128 128 128 / 0.3); padding: 20px 0 4px; }
+      h2 { font-size: 15px; margin: 0 0 6px; }
+      p.hint { margin: 0 0 14px; opacity: 0.7; font-size: 13px; }
+
+      .row { display: flex; align-items: center; gap: 12px; }
+      .choice { display: flex; gap: 20px; }
+      .choice label { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+      input[type="range"] { flex: 1; max-width: 320px; }
+      output { font-variant-numeric: tabular-nums; min-width: 3ch; }
+
+      table { border-collapse: collapse; width: 100%; margin: 0 0 14px; }
+      th, td { text-align: left; padding: 5px 8px 5px 0; border-bottom: 1px solid rgb(128 128 128 / 0.2); }
+      th { font-weight: 600; opacity: 0.7; }
+      td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      tr.total td { font-weight: 600; border-bottom: none; }
+
+      button {
+        font: inherit; padding: 7px 14px; border-radius: 6px;
+        border: 1px solid rgb(128 128 128 / 0.5); background: transparent;
+        color: inherit; cursor: pointer;
+      }
+      button:hover:not(:disabled) { background: rgb(128 128 128 / 0.15); }
+      button:disabled { opacity: 0.5; cursor: default; }
+      #status { margin-left: 10px; opacity: 0.75; font-size: 13px; }
+      .empty { opacity: 0.7; font-style: italic; }
+
+      /* A callout, not a hint: the privacy difference must not be missed. */
+      .callout {
+        border: 1px solid rgb(198 138 40 / 0.55);
+        background: rgb(198 138 40 / 0.10);
+        border-radius: 7px;
+        padding: 10px 12px;
+        margin: 0 0 14px;
+      }
+      .callout h3 { font-size: 13px; margin: 0 0 5px; }
+      .callout p { margin: 0 0 6px; }
+      .callout p:last-child { margin-bottom: 0; }
+      .callout ul { margin: 4px 0 0; padding-left: 20px; }
+      .callout li { margin-bottom: 3px; }
+
+      #webgpu { margin: 0 0 14px; font-size: 13px; }
+      #webgpu.missing { color: #c2410c; }
+      :root:not([data-light]) #webgpu.missing { color: #fb923c; }
+
+      #cloud-setup[hidden] { display: none; }
+      #key {
+        font: inherit; font-family: ui-monospace, monospace; width: 100%;
+        max-width: 420px; padding: 6px 8px; border-radius: 6px;
+        border: 1px solid rgb(128 128 128 / 0.5);
+        background: transparent; color: inherit;
+      }
+      .keyrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      #key-status { opacity: 0.75; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <h1>Comic Translator</h1>
+    <p class="lede">Translates comics into English or Indonesian. Right-click any image and choose “Translate this comic page”.</p>
+
+    <section>
+      <h2>Source language</h2>
+      <p class="hint">
+        Which script the page you are reading is written in. This picks the text
+        recognition model: each script needs its own, and the wrong choice
+        produces nonsense rather than a visible failure. Set it before
+        translating.
+      </p>
+      <div class="choice" id="language"></div>
+      <p class="hint" id="language-note" style="margin-top:12px"></p>
+    </section>
+
+    <section>
+      <h2>Translate into</h2>
+      <p class="hint">
+        English works with either translator. Every other language needs Cloud:
+        the on-device model only translates into English.
+      </p>
+      <div class="choice" id="target"></div>
+    </section>
+
+    <section>
+      <h2>Translation</h2>
+      <p class="hint">
+        Where the recognised text gets translated. On this device is the default
+        and needs no account, no key and no network: a 1.5&nbsp;GB model
+        downloads once and then runs on your GPU. Cloud exists for devices that
+        cannot run it, which means devices without WebGPU.
+      </p>
+
+      <p id="webgpu">Checking whether this device can translate on its own…</p>
+
+      <div class="choice" id="provider"></div>
+
+      <div id="cloud-setup" hidden style="margin-top:16px">
+        <div class="callout">
+          <h3>Cloud translation sends your text to Google</h3>
+          <p>
+            This is a genuinely different privacy tradeoff from the on-device
+            model, not a faster version of it. With Cloud selected:
+          </p>
+          <ul>
+            <li>
+              The text recognised from every page you translate is sent to
+              Google&rsquo;s Gemini API. The images are not, only the text.
+            </li>
+            <li>
+              On Google&rsquo;s free API tier, they say that content may be used
+              to improve their products. Paid tiers say it is not.
+            </li>
+            <li>
+              Your API key is stored unencrypted in this browser&rsquo;s
+              extension storage on this device. It never syncs anywhere.
+            </li>
+          </ul>
+          <p>
+            On-device translation sends nothing at all. If that matters more to
+            you than translating on this particular machine, leave this set to
+            &ldquo;On this device&rdquo;.
+          </p>
+        </div>
+
+        <p class="hint">
+          Get a free key from
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer"
+            >Google AI Studio</a
+          >. The free tier is rate limited per minute; a whole page is sent as
+          one request so a normal page fits inside it.
+        </p>
+        <div class="keyrow">
+          <input
+            id="key"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Gemini API key"
+          />
+          <button id="key-clear" type="button">Remove key</button>
+          <span id="key-status"></span>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Detection confidence</h2>
+      <p class="hint">
+        How sure the detector must be before a region is translated. Lower finds
+        more text but picks up more false positives; higher is stricter and may
+        skip faint or unusual lettering. Takes effect on the next translation.
+      </p>
+      <div class="row">
+        <input id="threshold" type="range" min="5" max="95" step="1" value="60" />
+        <output id="threshold-value">0.60</output>
+      </div>
+    </section>
+
+    <section>
+      <h2>Cached model data</h2>
+      <p class="hint">
+        The translation model is downloaded on first use and kept so it is not
+        fetched again. Sizes below are measured from the stored responses, not
+        estimated. Clearing frees the space; the next translation downloads it
+        again.
+      </p>
+      <table id="caches">
+        <thead>
+          <tr>
+            <th>Cache</th>
+            <th class="num">Items</th>
+            <th class="num">Size</th>
+          </tr>
+        </thead>
+        <tbody id="caches-body"></tbody>
+      </table>
+      <div class="row">
+        <button id="clear" type="button">Clear cached model data</button>
+        <span id="status"></span>
+      </div>
+      <p class="hint" style="margin-top:14px">
+        The detector, both OCR models and OpenCV.js are bundled inside the
+        extension itself rather than cached, so they are not listed here and
+        clearing does not affect them.
+      </p>
+    </section>
+
+    <script type="module" src="./options.ts"></script>
+  </body>
+</html>

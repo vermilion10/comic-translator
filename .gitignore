@@ -1,0 +1,20 @@
+node_modules/
+dist/
+__pycache__/
+.DS_Store
+*.pt
+*.onnx
+
+# Model weights and OpenCV.js, fetched by `npm run assets`
+extension/public/models/
+extension/public/vendor/
+
+# Downloaded pages and fixtures derived from them
+ml/eval/data/
+
+# Local environment, page cache, training output
+ml/.venv/
+ml/textseg/cache/
+ml/textseg/kaggle/
+ml/train/models/
+ml/train/runs/

@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: extension
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+
+      # The weights are pinned in prepare-assets.mjs, so its hash keys the cache.
+      - name: Cache model weights
+        uses: actions/cache@v4
+        with:
+          path: extension/public/models
+          key: models-${{ hashFiles('extension/scripts/prepare-assets.mjs') }}
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+      - name: Upload the unpacked extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: comic-translator-${{ github.sha }}
+          path: extension/dist
+          if-no-files-found: error

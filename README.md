@@ -8,6 +8,8 @@ typesets the translation back into the balloons, all inside the browser.
 detector: a text-segmentation model that predicts a per-pixel text map. The
 training and evaluation code is included under [`ml/`](ml/).
 
+read the paper [here](https://vermilion10.pages.dev/#/blog/comic-translator-paper)
+
 ## Features
 
 - **Source languages:** Japanese, Chinese and Korean.
